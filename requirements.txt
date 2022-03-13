@@ -1,0 +1,8 @@
+torch
+scipy
+matplotlib
+sklearn
+numpy
+gym
+cv2
+efficientnet_pytorch
