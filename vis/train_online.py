@@ -8,30 +8,27 @@ import torch
 import torch.nn as nn
 import math
 from torchvision import transforms
+from data_collection import *
+import random
 
 device='cuda'
 class SINRDataset(Dataset):
     def __init__(self):
-        data_path = "../gcp-server-dh2/ccp-vis/data/"
-        self.img_paths = []
-        self.metadata_paths = []
-        self.n=int(8*0.8)
+        self.env = VIS(1)
         self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
-        for _ in tqdm(range(int(1e5))):
-            for k in range(2,100):
-                filename = f"{_}{k}"
-                self.img_paths.append(data_path+f"{filename}_image.pt")
-                self.metadata_paths.append(data_path+f"{filename}_metadata_train.pt")
+        self.reset()
     def __len__(self):
-        return len(self.img_paths)*self.n
+        return 128
     def __getitem__(self, idx):
-        import torch
-        img = self.normalize(torch.load(self.img_paths[math.floor(idx/self.n)]))
-        meta = torch.load(self.metadata_paths[math.floor(idx/self.n)])[int(idx%self.n)]
-        return dict(img=img,
-                    loc=meta[:2]),meta[-1]
-    
+        x,y = np.random.uniform(-10,10,size=2)
+        return dict(img=self.img,
+                    loc=torch.FloatTensor([x,y])),self.env.get_metadata(x,y)
+    def reset(self):
+        self.env.n_sbs=random.randint(2,100)
+        self.env.reset(hard_reset=True)
+        self.img = self.normalize(torch.FloatTensor(self.env.get_image().transpose(2,0,1)))
+
 def create_dataloader(batch_size=128):
     return DataLoader(SINRDataset(),batch_size=batch_size, shuffle=True)
 

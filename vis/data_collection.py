@@ -95,22 +95,36 @@ def get_values_WI(sbs,network,x,y):
     I_ = np.log10(sum(I))
     W = network.W #Noise (dbm)
     return S, I_, W, S-np.log10(sum(I)+10**W)
+
+def plot1(fig):
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    w, h = fig.canvas.get_width_height()
+    return data.reshape((int(h), int(w), -1))
 class VIS(SINRNetwork):
-    def __init__(self, n_sbs):
+    def __init__(self, n_sbs,img_size=(224,224)):
         super(VIS,self).__init__(n_sbs=n_sbs)
         self.n_sbs = n_sbs
+        self.img_size = img_size
     def populate_users(self):
         return
     def get_image(self):
-        c1 = np.zeros(shape=(1,200,200))
+        fig, ax = plt.subplots()
+        self.texts = []
         for sbs in self.sbs:
-            c1[0,int(sbs.x*10), int(sbs.y*10)] = sbs.S
-        return c1
+            ax.scatter(sbs.x, sbs.y,alpha=1,color= plt.get_cmap("tab10")(sbs.S/42))
+        ax.set_xlim([-10,10])
+        ax.set_ylim([-10,10])
+        major_ticks = np.arange(-10, 10, 5)
+        ax.set_xticks(major_ticks)
+        ax.set_yticks(major_ticks)
+        ax.grid('on')
+        img = plot1(fig)
+        plt.close()
+        return cv2.resize(img,self.img_size)
     def get_metadata(self,x,y):
-        sinr = 0
-        for sbs in self.sbs:
-            sinr+=np.power(10,get_values_WI(sbs,self,x,y)[-1])        
-        return np.log10(sinr) #SINR
+        sinr=sum([get_values_WI(sbs,self,x,y)[-1] for sbs in self.sbs])
+        return sinr #SINR
     def toJSON(self):
         import json
         from json_tools import JSONable
@@ -120,6 +134,31 @@ class VIS(SINRNetwork):
         data['sbs'] = [sbs.toJSON() for sbs in data['sbs']]
         data['action_space'] = data['action_space'].toJSON()
         return json.dumps(data, cls=JSONable)
+# class VIS(SINRNetwork):
+#     def __init__(self, n_sbs):
+#         super(VIS,self).__init__(n_sbs=n_sbs)
+#         self.n_sbs = n_sbs
+#     def populate_users(self):
+#         return
+#     def get_image(self):
+#         c1 = np.zeros(shape=(1,200,200))
+#         for sbs in self.sbs:
+#             c1[0,int(sbs.x*10), int(sbs.y*10)] = sbs.S
+#         return c1
+#     def get_metadata(self,x,y):
+#         sinr = 0
+#         for sbs in self.sbs:
+#             sinr+=np.power(10,get_values_WI(sbs,self,x,y)[-1])        
+#         return np.log10(sinr) #SINR
+#     def toJSON(self):
+#         import json
+#         from json_tools import JSONable
+#         from copy import deepcopy
+#         data = deepcopy(self.__dict__)
+#         data['users'] = []
+#         data['sbs'] = [sbs.toJSON() for sbs in data['sbs']]
+#         data['action_space'] = data['action_space'].toJSON()
+#         return json.dumps(data, cls=JSONable)
 
 if __name__ == '__main__':
     import torch

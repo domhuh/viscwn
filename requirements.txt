@@ -6,3 +6,5 @@ numpy
 gym
 cv2
 efficientnet_pytorch
+adjustText
+torchvision
